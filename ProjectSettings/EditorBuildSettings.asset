@@ -8,4 +8,7 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/WordGame/Scenes/MainMenu.unity
     guid: 01fbe97d446a00e4398b4bb5ade446df
+  - enabled: 1
+    path: Assets/WordGame/Scenes/Game.unity
+    guid: 384d08946bef07e4b80438ea49a91388
   m_configObjects: {}

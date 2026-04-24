@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 
 public class ModeSelectPopup : PopupBase
@@ -14,7 +15,6 @@ public class ModeSelectPopup : PopupBase
     {
         Debug.Assert(escapeButton != null, "ModeSelectPopup: escapeButton missing!");
         Debug.Assert(exploreButton != null, "ModeSelectPopup: exploreButton missing!");
-        Debug.Assert(placeholderPopup != null, "ModeSelectPopup: placeholderPopup reference missing!");
 
         escapeButton.onClick.RemoveAllListeners();
         escapeButton.onClick.AddListener(OnEscapeSelected);
@@ -35,14 +35,24 @@ public class ModeSelectPopup : PopupBase
     private void OnEscapeSelected()
     {
         GameMode.SetMode(GameMode.Mode.Escape);
-        Hide();
-        placeholderPopup.Show();
+        LoadGame();
     }
 
     private void OnExploreSelected()
     {
         GameMode.SetMode(GameMode.Mode.Explore);
-        Hide();
-        placeholderPopup.Show();
+        LoadGame();
+    }
+
+    private void LoadGame()
+    {
+        if (SceneLoader.Instance != null)
+        {
+            SceneLoader.Instance.LoadScene("Game");
+        }
+        else
+        {
+            SceneManager.LoadScene("Game");
+        }
     }
 }
