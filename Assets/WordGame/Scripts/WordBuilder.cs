@@ -17,6 +17,7 @@ public class WordBuilder : MonoBehaviour
     public WinPopup winPopup;
     public EscapeTimer escapeTimer;
     public RectTransform floatingScoresParent;
+    public GameController gameController;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -93,6 +94,9 @@ public class WordBuilder : MonoBehaviour
             float timeLeft = escapeTimer != null ? escapeTimer.TimeLeft : 0f;
             Debug.Log("[WordBuilder] Escape win! Score: " + finalScore + " + bonus, time left: " + timeLeft);
 
+            GameStats.RecordEscapeWin();
+            if (gameController != null) gameController.RecordPlayedTime();
+
             if (SoundManager.Instance != null) SoundManager.Instance.PlayWin();
             if (winPopup != null) winPopup.ShowResult(finalScore, timeLeft);
             else Debug.LogWarning("WordBuilder: winPopup not assigned!");
@@ -105,6 +109,9 @@ public class WordBuilder : MonoBehaviour
         if (escapeTimer != null) escapeTimer.Stop();
         int score = scoreManager != null ? scoreManager.CurrentScore : 0;
         Debug.Log("[WordBuilder] Deadlock! Final score: " + score);
+
+        if (GameMode.Current == GameMode.Mode.Escape) GameStats.RecordEscapeLoss();
+        if (gameController != null) gameController.RecordPlayedTime();
 
         if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         string title = GameMode.Current == GameMode.Mode.Escape ? "TRAPPED" : "NO MORE WORDS";
@@ -121,6 +128,9 @@ public class WordBuilder : MonoBehaviour
 
         int score = scoreManager != null ? scoreManager.CurrentScore : 0;
         Debug.Log("[WordBuilder] Time's up! Score: " + score);
+
+        GameStats.RecordEscapeLoss();
+        if (gameController != null) gameController.RecordPlayedTime();
 
         if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         if (gameOverPopup != null) gameOverPopup.ShowResult(score, "TIME'S UP");
@@ -238,6 +248,7 @@ public class WordBuilder : MonoBehaviour
 
             ApplyValidWord();
             if (scoreManager != null) scoreDelta = scoreManager.AddWord(word, numberBonus);
+            GameStats.RecordWord(word, scoreDelta);
             if (preview != null)
             {
                 string flashMsg = numberBonus ? "✓ " + word + " ×2" : "✓ " + word;

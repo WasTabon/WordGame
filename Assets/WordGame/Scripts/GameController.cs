@@ -14,11 +14,18 @@ public class GameController : MonoBehaviour
     public float escapeBaseSeconds = 30f;
     public float escapeSecondsPerRadius = 12f;
 
+    private float gameStartTime;
+    private bool timeRecorded;
+
     private void Start()
     {
         Debug.Assert(grid != null, "GameController: grid missing!");
 
         if (scoreManager != null) scoreManager.ResetScore();
+        gameStartTime = Time.time;
+        timeRecorded = false;
+
+        GameStats.RecordGameStarted(GameMode.Current);
 
         var center = HexCoord.Zero;
         var result = BoardGenerator.Generate(grid.gridRadius, center);
@@ -37,6 +44,13 @@ public class GameController : MonoBehaviour
         Debug.Log("[GameController] Placed " + numberCells.Count + " number cells.");
 
         SetupModeSpecific();
+    }
+
+    public void RecordPlayedTime()
+    {
+        if (timeRecorded) return;
+        timeRecorded = true;
+        GameStats.AddTimePlayed(Time.time - gameStartTime);
     }
 
     private void SetupModeSpecific()

@@ -164,6 +164,7 @@ MonoBehaviour:
   restartButton: {fileID: 1902699947}
   mainMenuButton: {fileID: 1861302623}
   timeBonusPerSecond: 5
+  countUpDuration: 0.9
 --- !u!224 &4236549
 RectTransform:
   m_ObjectHideFlags: 0
@@ -2659,6 +2660,7 @@ MonoBehaviour:
   winPopup: {fileID: 4236548}
   escapeTimer: {fileID: 1030367471}
   floatingScoresParent: {fileID: 625604046}
+  gameController: {fileID: 1030367466}
   lineThickness: 14
   lineColor: {r: 1, g: 1, b: 1, a: 0.65}
 --- !u!114 &1030367469
@@ -3446,6 +3448,7 @@ MonoBehaviour:
   newRecordBadge: {fileID: 1658138123}
   restartButton: {fileID: 307105268}
   mainMenuButton: {fileID: 601376004}
+  countUpDuration: 0.8
 --- !u!225 &1274174739
 CanvasGroup:
   m_ObjectHideFlags: 0

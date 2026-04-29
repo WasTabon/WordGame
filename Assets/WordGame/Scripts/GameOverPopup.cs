@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
+using DG.Tweening;
 
 public class GameOverPopup : PopupBase
 {
@@ -11,6 +12,8 @@ public class GameOverPopup : PopupBase
     public TextMeshProUGUI newRecordBadge;
     public Button restartButton;
     public Button mainMenuButton;
+
+    public float countUpDuration = 0.8f;
 
     private void Start()
     {
@@ -27,7 +30,7 @@ public class GameOverPopup : PopupBase
     public void ShowResult(int finalScore, string title)
     {
         if (titleText != null) titleText.text = title;
-        if (scoreText != null) scoreText.text = finalScore.ToString();
+        if (scoreText != null) scoreText.text = "0";
 
         bool isNewRecord = HighScoreManager.TrySetHighScore(GameMode.Current, finalScore);
         int hs = HighScoreManager.GetHighScore(GameMode.Current);
@@ -36,6 +39,18 @@ public class GameOverPopup : PopupBase
         if (newRecordBadge != null) newRecordBadge.gameObject.SetActive(isNewRecord);
 
         Show();
+        AnimateScore(finalScore);
+    }
+
+    private void AnimateScore(int target)
+    {
+        if (scoreText == null) return;
+        scoreText.transform.DOKill();
+        int displayed = 0;
+        DOTween.To(() => displayed, v => { displayed = v; scoreText.text = v.ToString(); }, target, countUpDuration)
+            .SetEase(Ease.OutQuart)
+            .SetDelay(0.2f)
+            .OnComplete(() => scoreText.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 4, 0.5f));
     }
 
     private void OnRestart()

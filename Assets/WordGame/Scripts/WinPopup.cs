@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
 using TMPro;
+using DG.Tweening;
 
 public class WinPopup : PopupBase
 {
@@ -14,6 +15,7 @@ public class WinPopup : PopupBase
     public Button mainMenuButton;
 
     public int timeBonusPerSecond = 5;
+    public float countUpDuration = 0.9f;
 
     private void Start()
     {
@@ -33,7 +35,7 @@ public class WinPopup : PopupBase
         int total = wordScore + bonus;
 
         if (titleText != null) titleText.text = "ESCAPED!";
-        if (scoreText != null) scoreText.text = total.ToString();
+        if (scoreText != null) scoreText.text = "0";
         if (timeBonusText != null) timeBonusText.text = "+ " + bonus + " time bonus";
 
         bool isNewRecord = HighScoreManager.TrySetHighScore(GameMode.Current, total);
@@ -43,6 +45,18 @@ public class WinPopup : PopupBase
         if (newRecordBadge != null) newRecordBadge.gameObject.SetActive(isNewRecord);
 
         Show();
+        AnimateScore(total);
+    }
+
+    private void AnimateScore(int target)
+    {
+        if (scoreText == null) return;
+        scoreText.transform.DOKill();
+        int displayed = 0;
+        DOTween.To(() => displayed, v => { displayed = v; scoreText.text = v.ToString(); }, target, countUpDuration)
+            .SetEase(Ease.OutQuart)
+            .SetDelay(0.25f)
+            .OnComplete(() => scoreText.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 4, 0.5f));
     }
 
     private void OnRestart()
