@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 public class ModeSelectPopup : PopupBase
 {
@@ -8,6 +9,9 @@ public class ModeSelectPopup : PopupBase
     public Button exploreButton;
     public Button closeButton;
     public Button blockerButton;
+
+    public TextMeshProUGUI escapeBestText;
+    public TextMeshProUGUI exploreBestText;
 
     public PlaceholderPopup placeholderPopup;
 
@@ -30,6 +34,14 @@ public class ModeSelectPopup : PopupBase
             blockerButton.onClick.RemoveAllListeners();
             blockerButton.onClick.AddListener(Hide);
         }
+    }
+
+    private void OnEnable()
+    {
+        if (escapeBestText != null)
+            escapeBestText.text = "Best: " + HighScoreManager.GetHighScore(GameMode.Mode.Escape);
+        if (exploreBestText != null)
+            exploreBestText.text = "Best: " + HighScoreManager.GetHighScore(GameMode.Mode.Explore);
     }
 
     private void OnEscapeSelected()

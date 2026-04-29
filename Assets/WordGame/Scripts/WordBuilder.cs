@@ -13,6 +13,7 @@ public class WordBuilder : MonoBehaviour
     public WordPreviewUI preview;
     public WordValidator validator;
     public ScoreManager scoreManager;
+    public GameOverPopup gameOverPopup;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -20,6 +21,8 @@ public class WordBuilder : MonoBehaviour
     private readonly List<HexCell> selected = new List<HexCell>();
     private readonly List<GameObject> lineObjects = new List<GameObject>();
     private bool isSelecting;
+
+    private bool gameOverShown;
 
     private void Awake()
     {
@@ -33,6 +36,7 @@ public class WordBuilder : MonoBehaviour
 
     private void Update()
     {
+        if (gameOverShown) return;
         if (!isSelecting) return;
 
         if (!Input.GetMouseButton(0))
@@ -47,6 +51,7 @@ public class WordBuilder : MonoBehaviour
 
     public bool TryStartWord(HexCell cell)
     {
+        if (gameOverShown) return false;
         Debug.Assert(grid != null, "WordBuilder: grid not assigned!");
 
         if (cell == null || cell.IsVacant) return false;
@@ -56,6 +61,19 @@ public class WordBuilder : MonoBehaviour
         AddCell(cell);
         isSelecting = true;
         return true;
+    }
+
+    private void CheckDeadlock()
+    {
+        if (gameOverShown) return;
+        if (DeadlockDetector.HasAnyValidWord(grid, validator)) return;
+
+        gameOverShown = true;
+        int finalScore = scoreManager != null ? scoreManager.CurrentScore : 0;
+        Debug.Log("[WordBuilder] Deadlock! Final score: " + finalScore);
+
+        if (gameOverPopup != null) gameOverPopup.ShowResult(finalScore, "NO MORE WORDS");
+        else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
     }
 
     private HexCell RaycastCellUnderPointer()
@@ -162,6 +180,7 @@ public class WordBuilder : MonoBehaviour
                 preview.FlashSuccess(flashMsg);
             }
             Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
+            CheckDeadlock();
         }
         else
         {

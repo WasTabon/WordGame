@@ -32,6 +32,12 @@ public class WordValidator : MonoBehaviour
         usedWords.Add(word.ToUpperInvariant());
     }
 
+    public bool IsAlreadyUsed(string word)
+    {
+        if (string.IsNullOrEmpty(word)) return false;
+        return usedWords.Contains(word.ToUpperInvariant());
+    }
+
     public void ResetUsedWords()
     {
         usedWords.Clear();
