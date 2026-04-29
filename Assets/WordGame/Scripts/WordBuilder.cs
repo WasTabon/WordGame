@@ -14,6 +14,8 @@ public class WordBuilder : MonoBehaviour
     public WordValidator validator;
     public ScoreManager scoreManager;
     public GameOverPopup gameOverPopup;
+    public WinPopup winPopup;
+    public EscapeTimer escapeTimer;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -27,6 +29,20 @@ public class WordBuilder : MonoBehaviour
     private void Awake()
     {
         Instance = this;
+    }
+
+    private void OnEnable()
+    {
+        if (escapeTimer != null)
+        {
+            escapeTimer.OnTimeout -= HandleTimeout;
+            escapeTimer.OnTimeout += HandleTimeout;
+        }
+    }
+
+    private void OnDisable()
+    {
+        if (escapeTimer != null) escapeTimer.OnTimeout -= HandleTimeout;
     }
 
     private void OnDestroy()
@@ -63,16 +79,46 @@ public class WordBuilder : MonoBehaviour
         return true;
     }
 
-    private void CheckDeadlock()
+    private void CheckEndgameAfterValidWord()
     {
         if (gameOverShown) return;
+
+        if (GameMode.Current == GameMode.Mode.Escape && EscapeWinDetector.HasReachedEdge(grid))
+        {
+            gameOverShown = true;
+            if (escapeTimer != null) escapeTimer.Stop();
+            int finalScore = scoreManager != null ? scoreManager.CurrentScore : 0;
+            float timeLeft = escapeTimer != null ? escapeTimer.TimeLeft : 0f;
+            Debug.Log("[WordBuilder] Escape win! Score: " + finalScore + " + bonus, time left: " + timeLeft);
+
+            if (winPopup != null) winPopup.ShowResult(finalScore, timeLeft);
+            else Debug.LogWarning("WordBuilder: winPopup not assigned!");
+            return;
+        }
+
         if (DeadlockDetector.HasAnyValidWord(grid, validator)) return;
 
         gameOverShown = true;
-        int finalScore = scoreManager != null ? scoreManager.CurrentScore : 0;
-        Debug.Log("[WordBuilder] Deadlock! Final score: " + finalScore);
+        if (escapeTimer != null) escapeTimer.Stop();
+        int score = scoreManager != null ? scoreManager.CurrentScore : 0;
+        Debug.Log("[WordBuilder] Deadlock! Final score: " + score);
 
-        if (gameOverPopup != null) gameOverPopup.ShowResult(finalScore, "NO MORE WORDS");
+        string title = GameMode.Current == GameMode.Mode.Escape ? "TRAPPED" : "NO MORE WORDS";
+        if (gameOverPopup != null) gameOverPopup.ShowResult(score, title);
+        else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
+    }
+
+    private void HandleTimeout()
+    {
+        if (gameOverShown) return;
+        gameOverShown = true;
+        ClearSelection();
+        isSelecting = false;
+
+        int score = scoreManager != null ? scoreManager.CurrentScore : 0;
+        Debug.Log("[WordBuilder] Time's up! Score: " + score);
+
+        if (gameOverPopup != null) gameOverPopup.ShowResult(score, "TIME'S UP");
         else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
     }
 
@@ -180,7 +226,7 @@ public class WordBuilder : MonoBehaviour
                 preview.FlashSuccess(flashMsg);
             }
             Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
-            CheckDeadlock();
+            CheckEndgameAfterValidWord();
         }
         else
         {

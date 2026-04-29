@@ -4,9 +4,13 @@ public class GameController : MonoBehaviour
 {
     public HexGrid grid;
     public ScoreManager scoreManager;
+    public EscapeTimer escapeTimer;
+    public GameObject timerHUDRoot;
 
     public int numberCellCount = 3;
     public int numberCellMinValue = 4;
+    public float escapeBaseSeconds = 30f;
+    public float escapeSecondsPerRadius = 12f;
 
     private void Start()
     {
@@ -29,5 +33,28 @@ public class GameController : MonoBehaviour
             if (cell != null) cell.SetMinWordLength(pair.Value);
         }
         Debug.Log("[GameController] Placed " + numberCells.Count + " number cells.");
+
+        SetupModeSpecific();
+    }
+
+    private void SetupModeSpecific()
+    {
+        bool isEscape = GameMode.Current == GameMode.Mode.Escape;
+
+        if (timerHUDRoot != null) timerHUDRoot.SetActive(isEscape);
+
+        if (escapeTimer != null)
+        {
+            if (isEscape)
+            {
+                float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
+                escapeTimer.Begin(seconds);
+                Debug.Log("[GameController] Escape mode: " + seconds + "s");
+            }
+            else
+            {
+                escapeTimer.Stop();
+            }
+        }
     }
 }
