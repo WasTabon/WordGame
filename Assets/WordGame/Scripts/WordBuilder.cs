@@ -12,6 +12,7 @@ public class WordBuilder : MonoBehaviour
     public RectTransform linesContainer;
     public WordPreviewUI preview;
     public WordValidator validator;
+    public ScoreManager scoreManager;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -152,9 +153,15 @@ public class WordBuilder : MonoBehaviour
         if (result == ValidationResult.Valid)
         {
             if (validator != null) validator.MarkUsed(word);
+            bool numberBonus = selected.Count > 0 && selected[0].MinWordLength > 0;
             ApplyValidWord();
-            if (preview != null) preview.FlashSuccess("✓ " + word);
-            Debug.Log("[WordBuilder] Accepted: " + word);
+            if (scoreManager != null) scoreManager.AddWord(word, numberBonus);
+            if (preview != null)
+            {
+                string flashMsg = numberBonus ? "✓ " + word + " ×2" : "✓ " + word;
+                preview.FlashSuccess(flashMsg);
+            }
+            Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
         }
         else
         {
