@@ -7,6 +7,7 @@ public class GameController : MonoBehaviour
     public EscapeTimer escapeTimer;
     public GameObject timerHUDRoot;
     public EdgeHighlighter edgeHighlighter;
+    public Tutorial tutorial;
 
     public int numberCellCount = 3;
     public int numberCellMinValue = 4;
@@ -43,21 +44,30 @@ public class GameController : MonoBehaviour
         bool isEscape = GameMode.Current == GameMode.Mode.Escape;
 
         if (timerHUDRoot != null) timerHUDRoot.SetActive(isEscape);
+        if (edgeHighlighter != null && isEscape) edgeHighlighter.Activate();
 
-        if (escapeTimer != null)
+        bool tutorialWillShow = tutorial != null && !Tutorial.IsTutorialDone(GameMode.Current);
+
+        if (escapeTimer != null && isEscape && !tutorialWillShow)
         {
-            if (isEscape)
-            {
-                float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
-                escapeTimer.Begin(seconds);
-                Debug.Log("[GameController] Escape mode: " + seconds + "s");
-            }
-            else
-            {
-                escapeTimer.Stop();
-            }
+            float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
+            escapeTimer.Begin(seconds);
+            Debug.Log("[GameController] Escape mode: " + seconds + "s");
         }
 
-        if (edgeHighlighter != null && isEscape) edgeHighlighter.Activate();
+        if (tutorial != null) tutorial.TryShow();
+
+        if (escapeTimer != null && isEscape && tutorialWillShow)
+        {
+            StartCoroutine(StartTimerAfterTutorial());
+        }
+    }
+
+    private System.Collections.IEnumerator StartTimerAfterTutorial()
+    {
+        while (tutorial != null && tutorial.gameObject.activeSelf) yield return null;
+        float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
+        escapeTimer.Begin(seconds);
+        Debug.Log("[GameController] Escape mode timer started after tutorial: " + seconds + "s");
     }
 }

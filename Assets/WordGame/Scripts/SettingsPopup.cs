@@ -10,6 +10,8 @@ public class SettingsPopup : PopupBase
     public TextMeshProUGUI sfxValueText;
     public Button closeButton;
     public Button blockerButton;
+    public Button resetTutorialButton;
+    public TextMeshProUGUI resetTutorialFeedback;
 
     private void Start()
     {
@@ -30,6 +32,30 @@ public class SettingsPopup : PopupBase
             blockerButton.onClick.RemoveAllListeners();
             blockerButton.onClick.AddListener(Hide);
         }
+
+        if (resetTutorialButton != null)
+        {
+            resetTutorialButton.onClick.RemoveAllListeners();
+            resetTutorialButton.onClick.AddListener(OnResetTutorial);
+        }
+        if (resetTutorialFeedback != null) resetTutorialFeedback.gameObject.SetActive(false);
+    }
+
+    private void OnResetTutorial()
+    {
+        Tutorial.ResetAll();
+        if (resetTutorialFeedback != null)
+        {
+            resetTutorialFeedback.gameObject.SetActive(true);
+            resetTutorialFeedback.text = "Tutorial reset!";
+            CancelInvoke(nameof(HideResetFeedback));
+            Invoke(nameof(HideResetFeedback), 1.5f);
+        }
+    }
+
+    private void HideResetFeedback()
+    {
+        if (resetTutorialFeedback != null) resetTutorialFeedback.gameObject.SetActive(false);
     }
 
     private void OnEnable()
