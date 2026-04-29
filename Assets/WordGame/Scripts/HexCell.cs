@@ -2,6 +2,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using DG.Tweening;
 
 public class HexCell : MonoBehaviour, IPointerDownHandler
 {
@@ -33,9 +34,11 @@ public class HexCell : MonoBehaviour, IPointerDownHandler
 
     public void SetVacant(bool vacant)
     {
+        bool wasVacant = IsVacant;
         IsVacant = vacant;
         if (vacant) IsSelected = false;
         Refresh();
+        if (vacant && !wasVacant) AnimateVacantTransition();
     }
 
     public void SetLetter(char letter)
@@ -53,8 +56,40 @@ public class HexCell : MonoBehaviour, IPointerDownHandler
     public void SetSelected(bool sel)
     {
         if (IsVacant) return;
+        bool wasSelected = IsSelected;
         IsSelected = sel;
         Refresh();
+        if (sel && !wasSelected) AnimateSelectPop();
+    }
+
+    private void AnimateSelectPop()
+    {
+        if (letterText == null) return;
+        var t = letterText.transform;
+        t.DOKill();
+        t.localScale = Vector3.one;
+        t.DOPunchScale(Vector3.one * 0.3f, 0.25f, 4, 0.6f);
+    }
+
+    private void AnimateVacantTransition()
+    {
+        if (hexImage == null) return;
+        var t = hexImage.transform;
+        t.DOKill();
+
+        var startScale = t.localScale;
+        var seq = DOTween.Sequence();
+        seq.Append(t.DOScale(startScale * 1.2f, 0.15f).SetEase(Ease.OutQuad));
+        seq.Append(t.DOScale(startScale, 0.25f).SetEase(Ease.OutBack));
+
+        if (letterText != null)
+        {
+            letterText.DOKill();
+            letterText.alpha = 0f;
+            letterText.DOFade(1f, 0.15f);
+        }
+
+        if (SoundManager.Instance != null) SoundManager.Instance.PlayVacantPop();
     }
 
     public void OnPointerDown(PointerEventData eventData)

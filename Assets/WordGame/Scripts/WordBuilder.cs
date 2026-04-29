@@ -16,6 +16,7 @@ public class WordBuilder : MonoBehaviour
     public GameOverPopup gameOverPopup;
     public WinPopup winPopup;
     public EscapeTimer escapeTimer;
+    public RectTransform floatingScoresParent;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -76,6 +77,7 @@ public class WordBuilder : MonoBehaviour
         ClearSelection();
         AddCell(cell);
         isSelecting = true;
+        if (SoundManager.Instance != null) SoundManager.Instance.PlaySelectStart();
         return true;
     }
 
@@ -91,6 +93,7 @@ public class WordBuilder : MonoBehaviour
             float timeLeft = escapeTimer != null ? escapeTimer.TimeLeft : 0f;
             Debug.Log("[WordBuilder] Escape win! Score: " + finalScore + " + bonus, time left: " + timeLeft);
 
+            if (SoundManager.Instance != null) SoundManager.Instance.PlayWin();
             if (winPopup != null) winPopup.ShowResult(finalScore, timeLeft);
             else Debug.LogWarning("WordBuilder: winPopup not assigned!");
             return;
@@ -103,6 +106,7 @@ public class WordBuilder : MonoBehaviour
         int score = scoreManager != null ? scoreManager.CurrentScore : 0;
         Debug.Log("[WordBuilder] Deadlock! Final score: " + score);
 
+        if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         string title = GameMode.Current == GameMode.Mode.Escape ? "TRAPPED" : "NO MORE WORDS";
         if (gameOverPopup != null) gameOverPopup.ShowResult(score, title);
         else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
@@ -118,6 +122,7 @@ public class WordBuilder : MonoBehaviour
         int score = scoreManager != null ? scoreManager.CurrentScore : 0;
         Debug.Log("[WordBuilder] Time's up! Score: " + score);
 
+        if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         if (gameOverPopup != null) gameOverPopup.ShowResult(score, "TIME'S UP");
         else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
     }
@@ -176,9 +181,12 @@ public class WordBuilder : MonoBehaviour
         {
             DrawLine(selected[selected.Count - 1], cell);
         }
+        int chainIndex = selected.Count;
         selected.Add(cell);
         cell.SetSelected(true);
         UpdatePreview();
+        if (chainIndex > 0 && SoundManager.Instance != null)
+            SoundManager.Instance.PlaySelectAdd(chainIndex - 1);
     }
 
     private void RemoveLastCell()
@@ -218,13 +226,32 @@ public class WordBuilder : MonoBehaviour
         {
             if (validator != null) validator.MarkUsed(word);
             bool numberBonus = selected.Count > 0 && selected[0].MinWordLength > 0;
+            int scoreDelta = 0;
+            Vector2 popupPos = Vector2.zero;
+            if (selected.Count > 0)
+            {
+                Vector2 sum = Vector2.zero;
+                for (int i = 0; i < selected.Count; i++)
+                    sum += selected[i].GetComponent<RectTransform>().anchoredPosition;
+                popupPos = sum / selected.Count;
+            }
+
             ApplyValidWord();
-            if (scoreManager != null) scoreManager.AddWord(word, numberBonus);
+            if (scoreManager != null) scoreDelta = scoreManager.AddWord(word, numberBonus);
             if (preview != null)
             {
                 string flashMsg = numberBonus ? "✓ " + word + " ×2" : "✓ " + word;
                 preview.FlashSuccess(flashMsg);
             }
+
+            if (floatingScoresParent != null && scoreDelta > 0)
+            {
+                string popupText = numberBonus ? "+" + scoreDelta + " ×2" : "+" + scoreDelta;
+                FloatingScorePopup.Spawn(floatingScoresParent, popupPos, popupText, new Color(0.31f, 0.80f, 0.51f, 1f));
+            }
+
+            if (SoundManager.Instance != null) SoundManager.Instance.PlaySuccess();
+
             Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
             CheckEndgameAfterValidWord();
         }
@@ -232,6 +259,8 @@ public class WordBuilder : MonoBehaviour
         {
             string msg = MessageFor(result);
             if (preview != null) preview.FlashError(msg);
+            if (SoundManager.Instance != null) SoundManager.Instance.PlayError();
+            if (ScreenShaker.Instance != null) ScreenShaker.Instance.Shake(25f, 0.25f);
             Debug.Log("[WordBuilder] Rejected (" + result + "): " + word);
             ClearSelection(false);
         }

@@ -14,6 +14,7 @@ public class TimerHUD : MonoBehaviour
     public float warningThreshold = 10f;
 
     private bool isWarningPulse;
+    private int lastTickSecond = -1;
 
     private void OnEnable()
     {
@@ -22,6 +23,7 @@ public class TimerHUD : MonoBehaviour
             timer.OnTick -= HandleTick;
             timer.OnTick += HandleTick;
         }
+        lastTickSecond = -1;
     }
 
     private void OnDisable()
@@ -41,6 +43,16 @@ public class TimerHUD : MonoBehaviour
 
         bool warning = timeLeft <= warningThreshold && timeLeft > 0f;
         timeText.color = warning ? warningColor : normalColor;
+
+        if (warning)
+        {
+            int secInt = Mathf.CeilToInt(timeLeft);
+            if (secInt != lastTickSecond)
+            {
+                lastTickSecond = secInt;
+                if (SoundManager.Instance != null) SoundManager.Instance.PlayTick();
+            }
+        }
 
         if (warning && !isWarningPulse)
         {

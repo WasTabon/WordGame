@@ -6,6 +6,7 @@ public class GameController : MonoBehaviour
     public ScoreManager scoreManager;
     public EscapeTimer escapeTimer;
     public GameObject timerHUDRoot;
+    public EdgeHighlighter edgeHighlighter;
 
     public int numberCellCount = 3;
     public int numberCellMinValue = 4;
@@ -56,5 +57,7 @@ public class GameController : MonoBehaviour
                 escapeTimer.Stop();
             }
         }
+
+        if (edgeHighlighter != null && isEscape) edgeHighlighter.Activate();
     }
 }
