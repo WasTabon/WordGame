@@ -19,6 +19,11 @@ public class HexGrid : MonoBehaviour
 
     public void Build()
     {
+        Build(null);
+    }
+
+    public void Build(Dictionary<HexCoord, char> presetLetters)
+    {
         Debug.Assert(container != null, "HexGrid: container not assigned!");
         Debug.Assert(cellSprite != null, "HexGrid: cellSprite not assigned!");
 
@@ -26,8 +31,17 @@ public class HexGrid : MonoBehaviour
 
         foreach (var coord in HexShape(gridRadius))
         {
-            var cell = CreateCell(coord);
-            cells[coord] = cell;
+            char letter;
+            if (presetLetters != null && presetLetters.TryGetValue(coord, out letter))
+            {
+                var cell = CreateCell(coord, letter);
+                cells[coord] = cell;
+            }
+            else
+            {
+                var cell = CreateCell(coord, LetterDistribution.GetRandom());
+                cells[coord] = cell;
+            }
         }
     }
 
@@ -70,7 +84,16 @@ public class HexGrid : MonoBehaviour
         return false;
     }
 
-    private HexCell CreateCell(HexCoord coord)
+    public void MakeCellsVacant(IEnumerable<HexCoord> coords)
+    {
+        foreach (var c in coords)
+        {
+            HexCell cell;
+            if (cells.TryGetValue(c, out cell)) cell.SetVacant(true);
+        }
+    }
+
+    private HexCell CreateCell(HexCoord coord, char letter)
     {
         var go = new GameObject("Cell_" + coord.q + "_" + coord.r, typeof(RectTransform));
         go.transform.SetParent(container, false);
@@ -120,7 +143,7 @@ public class HexGrid : MonoBehaviour
         cell.hexImage = img;
         cell.letterText = letterTMP;
         cell.numberText = numberTMP;
-        cell.Setup(coord, LetterDistribution.GetRandom());
+        cell.Setup(coord, letter);
 
         return cell;
     }

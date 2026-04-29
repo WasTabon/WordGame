@@ -845,6 +845,7 @@ GameObject:
   - component: {fileID: 1030367467}
   - component: {fileID: 1030367466}
   - component: {fileID: 1030367468}
+  - component: {fileID: 1030367469}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -915,8 +916,22 @@ MonoBehaviour:
   grid: {fileID: 1030367467}
   linesContainer: {fileID: 1805055437}
   preview: {fileID: 1069035717}
+  validator: {fileID: 1030367469}
   lineThickness: 14
   lineColor: {r: 1, g: 1, b: 1, a: 0.65}
+--- !u!114 &1030367469
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1030367464}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: e7c918e5572088d4382e5a77aadcf372, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  minWordLength: 2
 --- !u!1 &1069035715
 GameObject:
   m_ObjectHideFlags: 0
@@ -967,6 +982,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   text: {fileID: 488130877}
+  normalColor: {r: 0.91, g: 0.65, b: 0.27, a: 1}
+  successColor: {r: 0.31, g: 0.8, b: 0.51, a: 1}
+  errorColor: {r: 0.92, g: 0.36, b: 0.36, a: 1}
+  flashDuration: 0.7
 --- !u!1 &1199990470
 GameObject:
   m_ObjectHideFlags: 0

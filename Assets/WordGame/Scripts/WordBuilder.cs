@@ -11,6 +11,7 @@ public class WordBuilder : MonoBehaviour
     public HexGrid grid;
     public RectTransform linesContainer;
     public WordPreviewUI preview;
+    public WordValidator validator;
 
     public float lineThickness = 14f;
     public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
@@ -134,12 +135,73 @@ public class WordBuilder : MonoBehaviour
     private void SubmitAndClear()
     {
         isSelecting = false;
-        if (selected.Count >= 2)
+
+        if (selected.Count < 2)
         {
-            string word = BuildWordString();
-            Debug.Log("[WordBuilder] Submitted: " + word);
+            ClearSelection();
+            return;
         }
-        ClearSelection();
+
+        string word = BuildWordString();
+        int requiredLen = ComputeRequiredLength();
+
+        ValidationResult result = ValidationResult.Valid;
+        if (validator != null) result = validator.Validate(word, requiredLen);
+        else Debug.LogWarning("WordBuilder: validator not assigned, accepting all words.");
+
+        if (result == ValidationResult.Valid)
+        {
+            if (validator != null) validator.MarkUsed(word);
+            ApplyValidWord();
+            if (preview != null) preview.FlashSuccess("✓ " + word);
+            Debug.Log("[WordBuilder] Accepted: " + word);
+        }
+        else
+        {
+            string msg = MessageFor(result);
+            if (preview != null) preview.FlashError(msg);
+            Debug.Log("[WordBuilder] Rejected (" + result + "): " + word);
+            ClearSelection(false);
+        }
+    }
+
+    private void ApplyValidWord()
+    {
+        var coords = new List<HexCoord>(selected.Count);
+        for (int i = 0; i < selected.Count; i++) coords.Add(selected[i].Coord);
+
+        for (int i = 0; i < selected.Count; i++) selected[i].SetSelected(false);
+        selected.Clear();
+
+        for (int i = 0; i < lineObjects.Count; i++)
+        {
+            if (lineObjects[i] != null) Destroy(lineObjects[i]);
+        }
+        lineObjects.Clear();
+
+        grid.MakeCellsVacant(coords);
+    }
+
+    private int ComputeRequiredLength()
+    {
+        int max = 0;
+        for (int i = 0; i < selected.Count; i++)
+        {
+            int n = selected[i].MinWordLength;
+            if (n > max) max = n;
+        }
+        return max;
+    }
+
+    private string MessageFor(ValidationResult r)
+    {
+        switch (r)
+        {
+            case ValidationResult.TooShort: return "TOO SHORT";
+            case ValidationResult.NotInDictionary: return "NOT A WORD";
+            case ValidationResult.AlreadyUsed: return "ALREADY USED";
+            default: return "?";
+        }
     }
 
     private string BuildWordString()
@@ -149,7 +211,7 @@ public class WordBuilder : MonoBehaviour
         return sb.ToString();
     }
 
-    private void ClearSelection()
+    private void ClearSelection(bool clearPreview = true)
     {
         for (int i = 0; i < selected.Count; i++)
         {
@@ -163,7 +225,7 @@ public class WordBuilder : MonoBehaviour
         }
         lineObjects.Clear();
 
-        UpdatePreview();
+        if (clearPreview) UpdatePreview();
     }
 
     private void UpdatePreview()

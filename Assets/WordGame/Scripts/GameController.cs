@@ -8,10 +8,12 @@ public class GameController : MonoBehaviour
     {
         Debug.Assert(grid != null, "GameController: grid missing!");
 
-        grid.Build();
+        var center = HexCoord.Zero;
+        var result = BoardGenerator.Generate(grid.gridRadius, center);
+        grid.Build(result.letters);
 
-        var center = grid.GetCell(HexCoord.Zero);
-        Debug.Assert(center != null, "GameController: center cell not found!");
-        if (center != null) center.SetVacant(true);
+        var centerCell = grid.GetCell(center);
+        Debug.Assert(centerCell != null, "GameController: center cell not found!");
+        if (centerCell != null) centerCell.SetVacant(true);
     }
 }
