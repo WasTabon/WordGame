@@ -3,56 +3,119 @@ using UnityEngine;
 
 public static class Dictionary
 {
-    private static HashSet<string> wordSet;
-    private static List<string> wordList;
+    private const string PLACEMENT_FILE = "word_list";
+    private const string VALIDATION_FILE = "words";
 
-    public static int WordCount
+    private static List<string> placementPool;
+    private static HashSet<string> placementSet;
+    private static HashSet<string> validationSet;
+    private static bool placementLoaded;
+    private static bool validationLoaded;
+
+    public static List<string> AllWords
     {
         get
         {
-            EnsureLoaded();
-            return wordSet.Count;
+            if (!placementLoaded) LoadPlacement();
+            return placementPool;
         }
     }
 
-    public static IReadOnlyList<string> AllWords
+    public static int PlacementPoolSize
     {
         get
         {
-            EnsureLoaded();
-            return wordList;
+            if (!placementLoaded) LoadPlacement();
+            return placementPool != null ? placementPool.Count : 0;
         }
     }
 
-    public static bool Contains(string word)
+    public static int ValidationSetSize
     {
-        EnsureLoaded();
+        get
+        {
+            if (!validationLoaded) LoadValidation();
+            return validationSet != null ? validationSet.Count : 0;
+        }
+    }
+
+    public static bool HasLargeValidationSet
+    {
+        get
+        {
+            if (!validationLoaded) LoadValidation();
+            return validationSet != null && validationSet.Count > 1000;
+        }
+    }
+
+    public static bool IsValidWord(string word)
+    {
         if (string.IsNullOrEmpty(word)) return false;
-        return wordSet.Contains(word.ToUpperInvariant());
+        string upper = word.ToUpperInvariant();
+
+        if (!validationLoaded) LoadValidation();
+        if (validationSet != null && validationSet.Count > 0)
+        {
+            return validationSet.Contains(upper);
+        }
+
+        if (!placementLoaded) LoadPlacement();
+        if (placementSet == null) return false;
+        return placementSet.Contains(upper);
     }
 
-    private static void EnsureLoaded()
+    public static void Preload()
     {
-        if (wordSet != null) return;
+        if (!placementLoaded) LoadPlacement();
+        if (!validationLoaded) LoadValidation();
+    }
 
-        wordSet = new HashSet<string>();
-        wordList = new List<string>();
-
-        var asset = Resources.Load<TextAsset>("word_list");
+    private static void LoadPlacement()
+    {
+        placementLoaded = true;
+        var asset = Resources.Load<TextAsset>(PLACEMENT_FILE);
         if (asset == null)
         {
-            Debug.LogError("Dictionary: Resources/word_list.txt not found! Run 'WordGame > Setup Dictionary (Iteration 4)' to create it.");
+            Debug.LogError("[Dictionary] word_list.txt not found in Resources! Generator will fail.");
+            placementPool = new List<string>();
+            placementSet = new HashSet<string>();
+            return;
+        }
+        placementPool = new List<string>();
+        placementSet = new HashSet<string>();
+        var lines = asset.text.Split('\n');
+        for (int i = 0; i < lines.Length; i++)
+        {
+            var w = lines[i].Trim().ToUpperInvariant();
+            if (w.Length >= 2)
+            {
+                placementPool.Add(w);
+                placementSet.Add(w);
+            }
+        }
+        Debug.Log("[Dictionary] Loaded " + placementPool.Count + " placement words.");
+    }
+
+    private static void LoadValidation()
+    {
+        validationLoaded = true;
+        var asset = Resources.Load<TextAsset>(VALIDATION_FILE);
+        if (asset == null)
+        {
+            Debug.LogWarning("[Dictionary] words.txt not found in Resources/. Validation falls back to placement pool (" + (placementPool != null ? placementPool.Count : 0) + " words). To enable real validation, place words.txt with 466k+ words in Assets/WordGame/Resources/");
+            validationSet = null;
             return;
         }
 
-        var lines = asset.text.Split(new[] { '\n', '\r' }, System.StringSplitOptions.RemoveEmptyEntries);
+        float t0 = Time.realtimeSinceStartup;
+        validationSet = new HashSet<string>();
+        var lines = asset.text.Split('\n');
         for (int i = 0; i < lines.Length; i++)
         {
-            var w = lines[i].Trim();
-            if (w.Length == 0) continue;
-            var upper = w.ToUpperInvariant();
-            if (wordSet.Add(upper)) wordList.Add(upper);
+            var w = lines[i].Trim().ToUpperInvariant();
+            if (w.Length >= 2) validationSet.Add(w);
         }
-        Debug.Log("Dictionary loaded: " + wordSet.Count + " words.");
+        float elapsed = Time.realtimeSinceStartup - t0;
+        Debug.Log("[Dictionary] Loaded " + validationSet.Count + " validation words in " + (elapsed * 1000f).ToString("F0") + "ms.");
     }
 }

@@ -1,3 +1,4 @@
+using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
 using DG.Tweening;
@@ -39,6 +40,13 @@ public class MainMenuUI : MonoBehaviour
         }
 
         AnimateIn();
+        StartCoroutine(PreloadDictionary());
+    }
+
+    private IEnumerator PreloadDictionary()
+    {
+        yield return null;
+        Dictionary.Preload();
     }
 
     private void AnimateIn()
