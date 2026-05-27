@@ -9,6 +9,8 @@ public class GameController : MonoBehaviour
     public EdgeHighlighter edgeHighlighter;
     public Tutorial tutorial;
     public PanController panController;
+    public StageToast stageToast;
+    public WordValidator validator;
 
     public int numberCellCount = 3;
     public int numberCellMinValue = 4;
@@ -21,6 +23,10 @@ public class GameController : MonoBehaviour
     private float gameStartTime;
     private bool timeRecorded;
     private int currentEscapeLevel;
+    private int currentExploreStage = 1;
+
+    public int CurrentExploreStage { get { return currentExploreStage; } }
+    public int CurrentEscapeLevel { get { return currentEscapeLevel; } }
 
     private void Start()
     {
@@ -29,6 +35,7 @@ public class GameController : MonoBehaviour
         if (scoreManager != null) scoreManager.ResetScore();
         gameStartTime = Time.time;
         timeRecorded = false;
+        currentExploreStage = 1;
 
         GameStats.RecordGameStarted(GameMode.Current);
 
@@ -45,6 +52,15 @@ public class GameController : MonoBehaviour
             grid.cellSize = exploreCellSize;
         }
 
+        BuildBoard();
+
+        if (panController != null) panController.SetPanMode(false);
+
+        SetupModeSpecific();
+    }
+
+    private void BuildBoard()
+    {
         var center = HexCoord.Zero;
         var result = BoardGenerator.Generate(grid.gridRadius, center);
         grid.Build(result.letters);
@@ -60,10 +76,26 @@ public class GameController : MonoBehaviour
             if (cell != null) cell.SetMinWordLength(pair.Value);
         }
         Debug.Log("[GameController] Placed " + numberCells.Count + " number cells.");
+    }
 
-        if (panController != null) panController.SetPanMode(false);
+    public void ContinueExplore()
+    {
+        currentExploreStage++;
+        Debug.Log("[GameController] Explore continues to stage " + currentExploreStage);
 
-        SetupModeSpecific();
+        if (stageToast != null) stageToast.ShowStage(currentExploreStage);
+
+        if (WordBuilder.Instance != null) WordBuilder.Instance.ClearAndUnlock();
+
+        if (validator != null) validator.ResetUsedWords();
+
+        BuildBoard();
+
+        if (panController != null)
+        {
+            panController.SetPanMode(false);
+            panController.ResetPosition();
+        }
     }
 
     private void SetupModeSpecific()
@@ -98,12 +130,18 @@ public class GameController : MonoBehaviour
         Debug.Log("[GameController] Escape mode timer started after tutorial: " + seconds + "s");
     }
 
-    public int CurrentEscapeLevel { get { return currentEscapeLevel; } }
-
     public void RecordPlayedTime()
     {
         if (timeRecorded) return;
         timeRecorded = true;
         GameStats.AddTimePlayed(Time.time - gameStartTime);
+    }
+
+    public void SaveExploreProgressOnExit()
+    {
+        if (GameMode.Current != GameMode.Mode.Explore) return;
+        if (scoreManager == null) return;
+        HighScoreManager.TrySetHighScore(GameMode.Mode.Explore, scoreManager.CurrentScore);
+        RecordPlayedTime();
     }
 }

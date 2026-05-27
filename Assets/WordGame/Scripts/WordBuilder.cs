@@ -302,6 +302,14 @@ public class WordBuilder : MonoBehaviour
 
         if (DeadlockDetector.HasAnyValidWord(grid, validator)) return;
 
+        if (GameMode.Current == GameMode.Mode.Explore)
+        {
+            Debug.Log("[WordBuilder] Explore deadlock — continuing to next stage");
+            if (SoundManager.Instance != null) SoundManager.Instance.PlayVacantPop();
+            if (gameController != null) gameController.ContinueExplore();
+            return;
+        }
+
         gameOverShown = true;
         if (escapeTimer != null) escapeTimer.Stop();
         int score = scoreManager != null ? scoreManager.CurrentScore : 0;
@@ -332,5 +340,12 @@ public class WordBuilder : MonoBehaviour
         if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         if (gameOverPopup != null) gameOverPopup.ShowResult(score, "TIME'S UP");
         else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
+    }
+
+    public void ClearAndUnlock()
+    {
+        ClearSelection();
+        isSelecting = false;
+        gameOverShown = false;
     }
 }

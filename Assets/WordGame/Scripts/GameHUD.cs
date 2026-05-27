@@ -10,6 +10,7 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI modeLabel;
     public TextMeshProUGUI scoreLabel;
     public ScoreManager scoreManager;
+    public GameController gameController;
 
     public Button panToggleButton;
     public Image panToggleBackground;
@@ -19,6 +20,8 @@ public class GameHUD : MonoBehaviour
     public Color panOffColor = new Color(0.29f, 0.33f, 0.41f, 1f);
     public Color panOnColor = new Color(0.91f, 0.65f, 0.27f, 1f);
 
+    private int displayedStage = -1;
+
     private void Start()
     {
         Debug.Assert(backButton != null, "GameHUD: backButton missing!");
@@ -27,10 +30,7 @@ public class GameHUD : MonoBehaviour
         backButton.onClick.RemoveAllListeners();
         backButton.onClick.AddListener(OnBack);
 
-        if (GameMode.Current == GameMode.Mode.Escape)
-            modeLabel.text = "ESCAPE • LV " + LevelManager.CurrentLevel;
-        else
-            modeLabel.text = "EXPLORE";
+        RefreshModeLabel();
 
         if (scoreLabel != null) scoreLabel.text = "0";
 
@@ -40,6 +40,34 @@ public class GameHUD : MonoBehaviour
             panToggleButton.onClick.AddListener(OnPanToggle);
         }
         RefreshPanVisual();
+    }
+
+    private void Update()
+    {
+        if (GameMode.Current == GameMode.Mode.Explore && gameController != null)
+        {
+            int stage = gameController.CurrentExploreStage;
+            if (stage != displayedStage)
+            {
+                displayedStage = stage;
+                RefreshModeLabel();
+            }
+        }
+    }
+
+    private void RefreshModeLabel()
+    {
+        if (modeLabel == null) return;
+        if (GameMode.Current == GameMode.Mode.Escape)
+        {
+            modeLabel.text = "ESCAPE • LV " + LevelManager.CurrentLevel;
+        }
+        else
+        {
+            int stage = gameController != null ? gameController.CurrentExploreStage : 1;
+            modeLabel.text = stage <= 1 ? "EXPLORE" : "EXPLORE • STAGE " + stage;
+            displayedStage = stage;
+        }
     }
 
     private void OnEnable()
@@ -86,6 +114,8 @@ public class GameHUD : MonoBehaviour
 
     private void OnBack()
     {
+        if (gameController != null) gameController.SaveExploreProgressOnExit();
+
         if (SceneLoader.Instance != null) SceneLoader.Instance.LoadScene("MainMenu");
         else SceneManager.LoadScene("MainMenu");
     }
