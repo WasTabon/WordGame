@@ -17,6 +17,11 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI panToggleLabel;
     public PanController panController;
 
+    public Button hintButton;
+    public TextMeshProUGUI hintCountLabel;
+    public HintHighlighter hintHighlighter;
+    public OutOfHintsPopup outOfHintsPopup;
+
     public Color panOffColor = new Color(0.29f, 0.33f, 0.41f, 1f);
     public Color panOnColor = new Color(0.91f, 0.65f, 0.27f, 1f);
 
@@ -40,6 +45,30 @@ public class GameHUD : MonoBehaviour
             panToggleButton.onClick.AddListener(OnPanToggle);
         }
         RefreshPanVisual();
+
+        if (hintButton != null)
+        {
+            hintButton.onClick.RemoveAllListeners();
+            hintButton.onClick.AddListener(OnHintClicked);
+        }
+        RefreshHintCount();
+    }
+
+    private void OnEnable()
+    {
+        if (scoreManager != null)
+        {
+            scoreManager.OnScoreChanged -= HandleScoreChanged;
+            scoreManager.OnScoreChanged += HandleScoreChanged;
+        }
+        HintManager.OnHintsChanged -= OnHintsChangedExternal;
+        HintManager.OnHintsChanged += OnHintsChangedExternal;
+    }
+
+    private void OnDisable()
+    {
+        if (scoreManager != null) scoreManager.OnScoreChanged -= HandleScoreChanged;
+        HintManager.OnHintsChanged -= OnHintsChangedExternal;
     }
 
     private void Update()
@@ -70,20 +99,6 @@ public class GameHUD : MonoBehaviour
         }
     }
 
-    private void OnEnable()
-    {
-        if (scoreManager != null)
-        {
-            scoreManager.OnScoreChanged -= HandleScoreChanged;
-            scoreManager.OnScoreChanged += HandleScoreChanged;
-        }
-    }
-
-    private void OnDisable()
-    {
-        if (scoreManager != null) scoreManager.OnScoreChanged -= HandleScoreChanged;
-    }
-
     private void HandleScoreChanged(int newScore, int delta)
     {
         if (scoreLabel == null) return;
@@ -110,6 +125,58 @@ public class GameHUD : MonoBehaviour
             panToggleBackground.color = active ? panOnColor : panOffColor;
         if (panToggleLabel != null)
             panToggleLabel.color = active ? new Color(0.10f, 0.14f, 0.20f, 1f) : Color.white;
+    }
+
+    private void OnHintClicked()
+    {
+        if (WordBuilder.Instance != null && WordBuilder.Instance.IsActivelyBuilding) return;
+
+        if (HintManager.Hints <= 0)
+        {
+            if (outOfHintsPopup != null) outOfHintsPopup.Show();
+            else Debug.LogWarning("GameHUD: outOfHintsPopup not assigned!");
+            return;
+        }
+
+        if (gameController == null || gameController.grid == null)
+        {
+            Debug.LogWarning("GameHUD: gameController/grid missing for hint!");
+            return;
+        }
+
+        var path = HintFinder.FindValidWord(gameController.grid, gameController.validator);
+        if (path == null)
+        {
+            Debug.Log("[GameHUD] Hint: no valid word found on board.");
+            return;
+        }
+
+        if (!HintManager.TrySpend()) return;
+
+        if (hintHighlighter != null)
+        {
+            hintHighlighter.Highlight(path);
+        }
+        else
+        {
+            Debug.LogWarning("GameHUD: hintHighlighter not assigned!");
+        }
+    }
+
+    private void OnHintsChangedExternal()
+    {
+        RefreshHintCount();
+        if (hintCountLabel != null)
+        {
+            hintCountLabel.transform.DOKill();
+            hintCountLabel.transform.localScale = Vector3.one;
+            hintCountLabel.transform.DOPunchScale(Vector3.one * 0.3f, 0.35f, 6, 0.6f);
+        }
+    }
+
+    private void RefreshHintCount()
+    {
+        if (hintCountLabel != null) hintCountLabel.text = HintManager.Hints.ToString();
     }
 
     private void OnBack()

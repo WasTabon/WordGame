@@ -220,6 +220,7 @@ public class WordBuilder : MonoBehaviour
             ApplyValidWord();
             if (scoreManager != null) scoreDelta = scoreManager.AddWord(word, numberBonus);
             GameStats.RecordWord(word, scoreDelta);
+            HintManager.CheckAndRewardForWord(word);
 
             if (preview != null)
             {
@@ -348,4 +349,6 @@ public class WordBuilder : MonoBehaviour
         isSelecting = false;
         gameOverShown = false;
     }
+
+    public bool IsActivelyBuilding { get { return isSelecting && selected.Count > 0; } }
 }
