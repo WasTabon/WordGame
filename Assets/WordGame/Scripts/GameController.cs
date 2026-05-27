@@ -8,6 +8,7 @@ public class GameController : MonoBehaviour
     public GameObject timerHUDRoot;
     public EdgeHighlighter edgeHighlighter;
     public Tutorial tutorial;
+    public PanController panController;
 
     public int numberCellCount = 3;
     public int numberCellMinValue = 4;
@@ -59,6 +60,8 @@ public class GameController : MonoBehaviour
             if (cell != null) cell.SetMinWordLength(pair.Value);
         }
         Debug.Log("[GameController] Placed " + numberCells.Count + " number cells.");
+
+        if (panController != null) panController.SetPanMode(false);
 
         SetupModeSpecific();
     }

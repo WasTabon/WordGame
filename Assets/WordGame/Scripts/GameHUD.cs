@@ -11,6 +11,14 @@ public class GameHUD : MonoBehaviour
     public TextMeshProUGUI scoreLabel;
     public ScoreManager scoreManager;
 
+    public Button panToggleButton;
+    public Image panToggleBackground;
+    public TextMeshProUGUI panToggleLabel;
+    public PanController panController;
+
+    public Color panOffColor = new Color(0.29f, 0.33f, 0.41f, 1f);
+    public Color panOnColor = new Color(0.91f, 0.65f, 0.27f, 1f);
+
     private void Start()
     {
         Debug.Assert(backButton != null, "GameHUD: backButton missing!");
@@ -25,6 +33,13 @@ public class GameHUD : MonoBehaviour
             modeLabel.text = "EXPLORE";
 
         if (scoreLabel != null) scoreLabel.text = "0";
+
+        if (panToggleButton != null)
+        {
+            panToggleButton.onClick.RemoveAllListeners();
+            panToggleButton.onClick.AddListener(OnPanToggle);
+        }
+        RefreshPanVisual();
     }
 
     private void OnEnable()
@@ -53,15 +68,25 @@ public class GameHUD : MonoBehaviour
         }
     }
 
+    private void OnPanToggle()
+    {
+        if (panController == null) return;
+        panController.TogglePanMode();
+        RefreshPanVisual();
+    }
+
+    private void RefreshPanVisual()
+    {
+        bool active = panController != null && panController.PanModeActive;
+        if (panToggleBackground != null)
+            panToggleBackground.color = active ? panOnColor : panOffColor;
+        if (panToggleLabel != null)
+            panToggleLabel.color = active ? new Color(0.10f, 0.14f, 0.20f, 1f) : Color.white;
+    }
+
     private void OnBack()
     {
-        if (SceneLoader.Instance != null)
-        {
-            SceneLoader.Instance.LoadScene("MainMenu");
-        }
-        else
-        {
-            SceneManager.LoadScene("MainMenu");
-        }
+        if (SceneLoader.Instance != null) SceneLoader.Instance.LoadScene("MainMenu");
+        else SceneManager.LoadScene("MainMenu");
     }
 }

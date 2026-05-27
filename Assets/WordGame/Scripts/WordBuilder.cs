@@ -1,8 +1,8 @@
 using System.Collections.Generic;
-using System.Text;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
+using TMPro;
 
 public class WordBuilder : MonoBehaviour
 {
@@ -19,13 +19,13 @@ public class WordBuilder : MonoBehaviour
     public RectTransform floatingScoresParent;
     public GameController gameController;
 
-    public float lineThickness = 14f;
-    public Color lineColor = new Color(1f, 1f, 1f, 0.65f);
+    public Color lineColor = new Color(0.91f, 0.65f, 0.27f, 0.85f);
+    public float lineWidth = 18f;
 
     private readonly List<HexCell> selected = new List<HexCell>();
-    private readonly List<GameObject> lineObjects = new List<GameObject>();
-    private bool isSelecting;
+    private readonly List<RectTransform> lines = new List<RectTransform>();
 
+    private bool isSelecting;
     private bool gameOverShown;
 
     private void Awake()
@@ -47,14 +47,16 @@ public class WordBuilder : MonoBehaviour
         if (escapeTimer != null) escapeTimer.OnTimeout -= HandleTimeout;
     }
 
-    private void OnDestroy()
-    {
-        if (Instance == this) Instance = null;
-    }
-
     private void Update()
     {
         if (gameOverShown) return;
+
+        if (PanController.Instance != null && PanController.Instance.ShouldBlockWordInput(-1))
+        {
+            if (isSelecting) ClearSelection();
+            return;
+        }
+
         if (!isSelecting) return;
 
         if (!Input.GetMouseButton(0))
@@ -70,6 +72,7 @@ public class WordBuilder : MonoBehaviour
     public bool TryStartWord(HexCell cell)
     {
         if (gameOverShown) return false;
+        if (PanController.Instance != null && PanController.Instance.PanModeActive) return false;
         Debug.Assert(grid != null, "WordBuilder: grid not assigned!");
 
         if (cell == null || cell.IsVacant) return false;
@@ -82,6 +85,200 @@ public class WordBuilder : MonoBehaviour
         return true;
     }
 
+    private HexCell RaycastCellUnderPointer()
+    {
+        var pointerData = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
+        var results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(pointerData, results);
+        for (int i = 0; i < results.Count; i++)
+        {
+            var hc = results[i].gameObject.GetComponentInParent<HexCell>();
+            if (hc != null) return hc;
+        }
+        return null;
+    }
+
+    private void HandleCellEntered(HexCell cell)
+    {
+        if (cell == null) return;
+        if (selected.Count == 0) return;
+
+        if (selected.Count >= 2 && selected[selected.Count - 2] == cell)
+        {
+            var last = selected[selected.Count - 1];
+            last.SetSelected(false);
+            selected.RemoveAt(selected.Count - 1);
+            if (lines.Count > 0)
+            {
+                Destroy(lines[lines.Count - 1].gameObject);
+                lines.RemoveAt(lines.Count - 1);
+            }
+            UpdatePreview();
+            return;
+        }
+
+        if (selected.Contains(cell)) return;
+        if (cell.IsVacant) return;
+
+        var prev = selected[selected.Count - 1];
+        if (!IsNeighbor(prev.Coord, cell.Coord)) return;
+
+        AddCell(cell);
+    }
+
+    private bool IsNeighbor(HexCoord a, HexCoord b)
+    {
+        foreach (var n in a.Neighbors())
+        {
+            if (n == b) return true;
+        }
+        return false;
+    }
+
+    private void AddCell(HexCell cell)
+    {
+        if (selected.Count > 0) DrawLine(selected[selected.Count - 1], cell);
+        int chainIndex = selected.Count;
+        selected.Add(cell);
+        cell.SetSelected(true);
+        UpdatePreview();
+        if (chainIndex > 0 && SoundManager.Instance != null)
+            SoundManager.Instance.PlaySelectAdd(chainIndex - 1);
+    }
+
+    private void DrawLine(HexCell from, HexCell to)
+    {
+        if (linesContainer == null) return;
+        var go = new GameObject("Line", typeof(RectTransform));
+        go.transform.SetParent(linesContainer, false);
+        var img = go.AddComponent<Image>();
+        img.color = lineColor;
+        img.raycastTarget = false;
+
+        var rt = go.GetComponent<RectTransform>();
+        Vector2 a = from.GetComponent<RectTransform>().anchoredPosition;
+        Vector2 b = to.GetComponent<RectTransform>().anchoredPosition;
+        Vector2 mid = (a + b) * 0.5f;
+        Vector2 diff = b - a;
+        float len = diff.magnitude;
+        rt.anchoredPosition = mid;
+        rt.sizeDelta = new Vector2(len, lineWidth);
+        rt.localRotation = Quaternion.Euler(0, 0, Mathf.Atan2(diff.y, diff.x) * Mathf.Rad2Deg);
+
+        lines.Add(rt);
+    }
+
+    private void UpdatePreview()
+    {
+        if (preview == null) return;
+        string word = "";
+        for (int i = 0; i < selected.Count; i++) word += selected[i].Letter;
+        preview.SetWord(word);
+    }
+
+    private int ComputeRequiredLength()
+    {
+        int max = 0;
+        for (int i = 0; i < selected.Count; i++)
+        {
+            if (selected[i].MinWordLength > max) max = selected[i].MinWordLength;
+        }
+        return max;
+    }
+
+    private void SubmitAndClear()
+    {
+        isSelecting = false;
+        if (selected.Count == 0)
+        {
+            ClearSelection();
+            return;
+        }
+
+        string word = "";
+        for (int i = 0; i < selected.Count; i++) word += selected[i].Letter;
+
+        int requiredMin = ComputeRequiredLength();
+        ValidationResult result = validator != null
+            ? validator.Validate(word, requiredMin)
+            : ValidationResult.NotInDictionary;
+
+        if (result == ValidationResult.Valid)
+        {
+            if (validator != null) validator.MarkUsed(word);
+            bool numberBonus = selected.Count > 0 && selected[0].MinWordLength > 0;
+            int scoreDelta = 0;
+            Vector2 popupPos = Vector2.zero;
+            if (selected.Count > 0)
+            {
+                Vector2 sum = Vector2.zero;
+                for (int i = 0; i < selected.Count; i++)
+                    sum += selected[i].GetComponent<RectTransform>().anchoredPosition;
+                popupPos = sum / selected.Count;
+            }
+
+            ApplyValidWord();
+            if (scoreManager != null) scoreDelta = scoreManager.AddWord(word, numberBonus);
+            GameStats.RecordWord(word, scoreDelta);
+
+            if (preview != null)
+            {
+                string flashMsg = numberBonus ? "✓ " + word + " ×2" : "✓ " + word;
+                preview.FlashSuccess(flashMsg);
+            }
+
+            if (floatingScoresParent != null && scoreDelta > 0)
+            {
+                string popupText = numberBonus ? "+" + scoreDelta + " ×2" : "+" + scoreDelta;
+                FloatingScorePopup.Spawn(floatingScoresParent, popupPos, popupText, new Color(0.31f, 0.80f, 0.51f, 1f));
+            }
+
+            if (SoundManager.Instance != null) SoundManager.Instance.PlaySuccess();
+            Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
+            CheckEndgameAfterValidWord();
+        }
+        else
+        {
+            string msg = MessageFor(result);
+            if (preview != null) preview.FlashError(msg);
+            if (SoundManager.Instance != null) SoundManager.Instance.PlayError();
+            if (ScreenShaker.Instance != null) ScreenShaker.Instance.Shake(25f, 0.25f);
+            Debug.Log("[WordBuilder] Rejected (" + result + "): " + word);
+            ClearSelection(false);
+        }
+    }
+
+    private string MessageFor(ValidationResult r)
+    {
+        switch (r)
+        {
+            case ValidationResult.TooShort: return "TOO SHORT";
+            case ValidationResult.NotInDictionary: return "NOT IN DICTIONARY";
+            case ValidationResult.AlreadyUsed: return "ALREADY USED";
+            default: return "INVALID";
+        }
+    }
+
+    private void ApplyValidWord()
+    {
+        for (int i = 0; i < selected.Count; i++) selected[i].SetVacant(true);
+        ClearSelection(true);
+    }
+
+    private void ClearSelection(bool clearPreview = true)
+    {
+        for (int i = 0; i < selected.Count; i++) selected[i].SetSelected(false);
+        selected.Clear();
+        for (int i = 0; i < lines.Count; i++) Destroy(lines[i].gameObject);
+        lines.Clear();
+        if (clearPreview) UpdatePreview();
+    }
+
+    private void UpdatePreviewForce()
+    {
+        if (preview != null) preview.SetWord("");
+    }
+
     private void CheckEndgameAfterValidWord()
     {
         if (gameOverShown) return;
@@ -92,7 +289,7 @@ public class WordBuilder : MonoBehaviour
             if (escapeTimer != null) escapeTimer.Stop();
             int finalScore = scoreManager != null ? scoreManager.CurrentScore : 0;
             float timeLeft = escapeTimer != null ? escapeTimer.TimeLeft : 0f;
-            Debug.Log("[WordBuilder] Escape win! Score: " + finalScore + " + bonus, time left: " + timeLeft);
+            Debug.Log("[WordBuilder] Escape win! Score: " + finalScore + ", time left: " + timeLeft);
 
             GameStats.RecordEscapeWin();
             if (gameController != null) gameController.RecordPlayedTime();
@@ -135,245 +332,5 @@ public class WordBuilder : MonoBehaviour
         if (SoundManager.Instance != null) SoundManager.Instance.PlayLose();
         if (gameOverPopup != null) gameOverPopup.ShowResult(score, "TIME'S UP");
         else Debug.LogWarning("WordBuilder: gameOverPopup not assigned!");
-    }
-
-    private HexCell RaycastCellUnderPointer()
-    {
-        var es = EventSystem.current;
-        if (es == null) return null;
-
-        var evt = new PointerEventData(es) { position = Input.mousePosition };
-        var results = new List<RaycastResult>();
-        es.RaycastAll(evt, results);
-
-        for (int i = 0; i < results.Count; i++)
-        {
-            var c = results[i].gameObject.GetComponent<HexCell>();
-            if (c != null) return c;
-        }
-        return null;
-    }
-
-    private void HandleCellEntered(HexCell cell)
-    {
-        if (cell.IsVacant) return;
-        if (selected.Count == 0) return;
-
-        int idx = selected.IndexOf(cell);
-        if (idx == selected.Count - 1) return;
-
-        if (selected.Count >= 2 && idx == selected.Count - 2)
-        {
-            RemoveLastCell();
-            return;
-        }
-
-        if (idx >= 0) return;
-
-        var last = selected[selected.Count - 1];
-        if (!IsNeighbor(last.Coord, cell.Coord)) return;
-
-        AddCell(cell);
-    }
-
-    private bool IsNeighbor(HexCoord a, HexCoord b)
-    {
-        foreach (var n in a.Neighbors())
-        {
-            if (n == b) return true;
-        }
-        return false;
-    }
-
-    private void AddCell(HexCell cell)
-    {
-        if (selected.Count > 0)
-        {
-            DrawLine(selected[selected.Count - 1], cell);
-        }
-        int chainIndex = selected.Count;
-        selected.Add(cell);
-        cell.SetSelected(true);
-        UpdatePreview();
-        if (chainIndex > 0 && SoundManager.Instance != null)
-            SoundManager.Instance.PlaySelectAdd(chainIndex - 1);
-    }
-
-    private void RemoveLastCell()
-    {
-        if (selected.Count == 0) return;
-        var last = selected[selected.Count - 1];
-        last.SetSelected(false);
-        selected.RemoveAt(selected.Count - 1);
-
-        if (lineObjects.Count > 0)
-        {
-            var lastLine = lineObjects[lineObjects.Count - 1];
-            lineObjects.RemoveAt(lineObjects.Count - 1);
-            if (lastLine != null) Destroy(lastLine);
-        }
-        UpdatePreview();
-    }
-
-    private void SubmitAndClear()
-    {
-        isSelecting = false;
-
-        if (selected.Count < 2)
-        {
-            ClearSelection();
-            return;
-        }
-
-        string word = BuildWordString();
-        int requiredLen = ComputeRequiredLength();
-
-        ValidationResult result = ValidationResult.Valid;
-        if (validator != null) result = validator.Validate(word, requiredLen);
-        else Debug.LogWarning("WordBuilder: validator not assigned, accepting all words.");
-
-        if (result == ValidationResult.Valid)
-        {
-            if (validator != null) validator.MarkUsed(word);
-            bool numberBonus = selected.Count > 0 && selected[0].MinWordLength > 0;
-            int scoreDelta = 0;
-            Vector2 popupPos = Vector2.zero;
-            if (selected.Count > 0)
-            {
-                Vector2 sum = Vector2.zero;
-                for (int i = 0; i < selected.Count; i++)
-                    sum += selected[i].GetComponent<RectTransform>().anchoredPosition;
-                popupPos = sum / selected.Count;
-            }
-
-            ApplyValidWord();
-            if (scoreManager != null) scoreDelta = scoreManager.AddWord(word, numberBonus);
-            GameStats.RecordWord(word, scoreDelta);
-            if (preview != null)
-            {
-                string flashMsg = numberBonus ? "✓ " + word + " ×2" : "✓ " + word;
-                preview.FlashSuccess(flashMsg);
-            }
-
-            if (floatingScoresParent != null && scoreDelta > 0)
-            {
-                string popupText = numberBonus ? "+" + scoreDelta + " ×2" : "+" + scoreDelta;
-                FloatingScorePopup.Spawn(floatingScoresParent, popupPos, popupText, new Color(0.31f, 0.80f, 0.51f, 1f));
-            }
-
-            if (SoundManager.Instance != null) SoundManager.Instance.PlaySuccess();
-
-            Debug.Log("[WordBuilder] Accepted: " + word + (numberBonus ? " (number bonus)" : ""));
-            CheckEndgameAfterValidWord();
-        }
-        else
-        {
-            string msg = MessageFor(result);
-            if (preview != null) preview.FlashError(msg);
-            if (SoundManager.Instance != null) SoundManager.Instance.PlayError();
-            if (ScreenShaker.Instance != null) ScreenShaker.Instance.Shake(25f, 0.25f);
-            Debug.Log("[WordBuilder] Rejected (" + result + "): " + word);
-            ClearSelection(false);
-        }
-    }
-
-    private void ApplyValidWord()
-    {
-        var coords = new List<HexCoord>(selected.Count);
-        for (int i = 0; i < selected.Count; i++) coords.Add(selected[i].Coord);
-
-        for (int i = 0; i < selected.Count; i++) selected[i].SetSelected(false);
-        selected.Clear();
-
-        for (int i = 0; i < lineObjects.Count; i++)
-        {
-            if (lineObjects[i] != null) Destroy(lineObjects[i]);
-        }
-        lineObjects.Clear();
-
-        grid.MakeCellsVacant(coords);
-    }
-
-    private int ComputeRequiredLength()
-    {
-        int max = 0;
-        for (int i = 0; i < selected.Count; i++)
-        {
-            int n = selected[i].MinWordLength;
-            if (n > max) max = n;
-        }
-        return max;
-    }
-
-    private string MessageFor(ValidationResult r)
-    {
-        switch (r)
-        {
-            case ValidationResult.TooShort: return "TOO SHORT";
-            case ValidationResult.NotInDictionary: return "NOT A WORD";
-            case ValidationResult.AlreadyUsed: return "ALREADY USED";
-            default: return "?";
-        }
-    }
-
-    private string BuildWordString()
-    {
-        var sb = new StringBuilder(selected.Count);
-        for (int i = 0; i < selected.Count; i++) sb.Append(selected[i].Letter);
-        return sb.ToString();
-    }
-
-    private void ClearSelection(bool clearPreview = true)
-    {
-        for (int i = 0; i < selected.Count; i++)
-        {
-            if (selected[i] != null) selected[i].SetSelected(false);
-        }
-        selected.Clear();
-
-        for (int i = 0; i < lineObjects.Count; i++)
-        {
-            if (lineObjects[i] != null) Destroy(lineObjects[i]);
-        }
-        lineObjects.Clear();
-
-        if (clearPreview) UpdatePreview();
-    }
-
-    private void UpdatePreview()
-    {
-        if (preview != null) preview.SetWord(BuildWordString());
-    }
-
-    private void DrawLine(HexCell a, HexCell b)
-    {
-        Debug.Assert(linesContainer != null, "WordBuilder: linesContainer not assigned!");
-        if (linesContainer == null) return;
-
-        var aRT = a.GetComponent<RectTransform>();
-        var bRT = b.GetComponent<RectTransform>();
-        var aPos = aRT.anchoredPosition;
-        var bPos = bRT.anchoredPosition;
-
-        var mid = (aPos + bPos) * 0.5f;
-        var delta = bPos - aPos;
-        float dist = delta.magnitude;
-        float angle = Mathf.Atan2(delta.y, delta.x) * Mathf.Rad2Deg;
-
-        var go = new GameObject("Line", typeof(RectTransform));
-        go.transform.SetParent(linesContainer, false);
-        var rt = go.GetComponent<RectTransform>();
-        rt.anchorMin = new Vector2(0.5f, 0.5f);
-        rt.anchorMax = new Vector2(0.5f, 0.5f);
-        rt.pivot = new Vector2(0.5f, 0.5f);
-        rt.sizeDelta = new Vector2(dist, lineThickness);
-        rt.anchoredPosition = mid;
-        rt.localRotation = Quaternion.Euler(0f, 0f, angle);
-
-        var img = go.AddComponent<Image>();
-        img.color = lineColor;
-        img.raycastTarget = false;
-
-        lineObjects.Add(go);
     }
 }

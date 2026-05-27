@@ -28,12 +28,11 @@ public static class LevelManager
     public static int GetRadiusForLevel(int level)
     {
         int l = Mathf.Max(1, level);
-        return Mathf.Clamp(1 + l, 2, 8);
+        return 1 + l;
     }
 
     public static float GetCellSizeForLevel(int level)
     {
-        int radius = GetRadiusForLevel(level);
-        return 230f / (radius + 1);
+        return level <= 1 ? 75f : 65f;
     }
 }
