@@ -19,7 +19,11 @@ public class GameHUD : MonoBehaviour
         backButton.onClick.RemoveAllListeners();
         backButton.onClick.AddListener(OnBack);
 
-        modeLabel.text = GameMode.Current == GameMode.Mode.Escape ? "ESCAPE" : "EXPLORE";
+        if (GameMode.Current == GameMode.Mode.Escape)
+            modeLabel.text = "ESCAPE • LV " + LevelManager.CurrentLevel;
+        else
+            modeLabel.text = "EXPLORE";
+
         if (scoreLabel != null) scoreLabel.text = "0";
     }
 

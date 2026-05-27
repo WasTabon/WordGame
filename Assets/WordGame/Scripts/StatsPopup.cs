@@ -9,6 +9,7 @@ public class StatsPopup : PopupBase
     public TextMeshProUGUI longestWordText;
     public TextMeshProUGUI bestWordScoreText;
     public TextMeshProUGUI escapeWinrateText;
+    public TextMeshProUGUI highestLevelText;
     public TextMeshProUGUI timePlayedText;
     public TextMeshProUGUI exploreBestText;
     public TextMeshProUGUI escapeBestText;
@@ -62,6 +63,12 @@ public class StatsPopup : PopupBase
             int wins = GameStats.EscapeWins;
             if (total == 0) escapeWinrateText.text = "-";
             else escapeWinrateText.text = wins + " / " + total + " (" + Mathf.RoundToInt(100f * wins / total) + "%)";
+        }
+        if (highestLevelText != null)
+        {
+            int highest = GameStats.HighestEscapeLevel;
+            int current = LevelManager.CurrentLevel;
+            highestLevelText.text = highest == 0 ? "Lv " + current : "Lv " + current + " (best " + highest + ")";
         }
         if (timePlayedText != null)
             timePlayedText.text = GameStats.FormatTime(GameStats.TimePlayed);

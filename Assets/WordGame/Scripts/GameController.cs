@@ -14,8 +14,12 @@ public class GameController : MonoBehaviour
     public float escapeBaseSeconds = 30f;
     public float escapeSecondsPerRadius = 12f;
 
+    public int exploreRadius = 3;
+    public float exploreCellSize = 75f;
+
     private float gameStartTime;
     private bool timeRecorded;
+    private int currentEscapeLevel;
 
     private void Start()
     {
@@ -26,6 +30,19 @@ public class GameController : MonoBehaviour
         timeRecorded = false;
 
         GameStats.RecordGameStarted(GameMode.Current);
+
+        if (GameMode.Current == GameMode.Mode.Escape)
+        {
+            currentEscapeLevel = LevelManager.CurrentLevel;
+            grid.gridRadius = LevelManager.GetRadiusForLevel(currentEscapeLevel);
+            grid.cellSize = LevelManager.GetCellSizeForLevel(currentEscapeLevel);
+            Debug.Log("[GameController] Escape Level " + currentEscapeLevel + " (radius=" + grid.gridRadius + ", cellSize=" + grid.cellSize + ")");
+        }
+        else
+        {
+            grid.gridRadius = exploreRadius;
+            grid.cellSize = exploreCellSize;
+        }
 
         var center = HexCoord.Zero;
         var result = BoardGenerator.Generate(grid.gridRadius, center);
@@ -46,13 +63,6 @@ public class GameController : MonoBehaviour
         SetupModeSpecific();
     }
 
-    public void RecordPlayedTime()
-    {
-        if (timeRecorded) return;
-        timeRecorded = true;
-        GameStats.AddTimePlayed(Time.time - gameStartTime);
-    }
-
     private void SetupModeSpecific()
     {
         bool isEscape = GameMode.Current == GameMode.Mode.Escape;
@@ -66,7 +76,7 @@ public class GameController : MonoBehaviour
         {
             float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
             escapeTimer.Begin(seconds);
-            Debug.Log("[GameController] Escape mode: " + seconds + "s");
+            Debug.Log("[GameController] Escape mode timer: " + seconds + "s");
         }
 
         if (tutorial != null) tutorial.TryShow();
@@ -83,5 +93,14 @@ public class GameController : MonoBehaviour
         float seconds = escapeBaseSeconds + grid.gridRadius * escapeSecondsPerRadius;
         escapeTimer.Begin(seconds);
         Debug.Log("[GameController] Escape mode timer started after tutorial: " + seconds + "s");
+    }
+
+    public int CurrentEscapeLevel { get { return currentEscapeLevel; } }
+
+    public void RecordPlayedTime()
+    {
+        if (timeRecorded) return;
+        timeRecorded = true;
+        GameStats.AddTimePlayed(Time.time - gameStartTime);
     }
 }

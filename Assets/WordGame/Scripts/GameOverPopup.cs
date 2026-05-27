@@ -38,6 +38,10 @@ public class GameOverPopup : PopupBase
         if (highScoreText != null) highScoreText.text = "Best: " + hs;
         if (newRecordBadge != null) newRecordBadge.gameObject.SetActive(isNewRecord);
 
+        var label = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null)
+            label.text = GameMode.Current == GameMode.Mode.Escape ? "RETRY LEVEL" : "PLAY AGAIN";
+
         Show();
         AnimateScore(finalScore);
     }

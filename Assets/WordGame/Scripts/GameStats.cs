@@ -11,6 +11,7 @@ public static class GameStats
     private const string LONGEST_WORD = "WG_Stats_LongestWord";
     private const string BEST_WORD_SCORE = "WG_Stats_BestWordScore";
     private const string TIME_PLAYED = "WG_Stats_TimePlayed";
+    private const string HIGHEST_ESCAPE_LEVEL = "WG_Stats_HighestEscapeLevel";
 
     public static int GamesTotal { get { return PlayerPrefs.GetInt(GAMES_TOTAL, 0); } }
     public static int GamesExplore { get { return PlayerPrefs.GetInt(GAMES_EXPLORE, 0); } }
@@ -21,6 +22,7 @@ public static class GameStats
     public static string LongestWord { get { return PlayerPrefs.GetString(LONGEST_WORD, ""); } }
     public static int BestWordScore { get { return PlayerPrefs.GetInt(BEST_WORD_SCORE, 0); } }
     public static float TimePlayed { get { return PlayerPrefs.GetFloat(TIME_PLAYED, 0f); } }
+    public static int HighestEscapeLevel { get { return PlayerPrefs.GetInt(HIGHEST_ESCAPE_LEVEL, 0); } }
 
     public static void RecordGameStarted(GameMode.Mode mode)
     {
@@ -63,6 +65,15 @@ public static class GameStats
         PlayerPrefs.Save();
     }
 
+    public static void TrackHighestEscapeLevel(int level)
+    {
+        if (level > HighestEscapeLevel)
+        {
+            PlayerPrefs.SetInt(HIGHEST_ESCAPE_LEVEL, level);
+            PlayerPrefs.Save();
+        }
+    }
+
     public static void ResetAll()
     {
         PlayerPrefs.DeleteKey(GAMES_TOTAL);
@@ -74,6 +85,7 @@ public static class GameStats
         PlayerPrefs.DeleteKey(LONGEST_WORD);
         PlayerPrefs.DeleteKey(BEST_WORD_SCORE);
         PlayerPrefs.DeleteKey(TIME_PLAYED);
+        PlayerPrefs.DeleteKey(HIGHEST_ESCAPE_LEVEL);
         PlayerPrefs.Save();
     }
 

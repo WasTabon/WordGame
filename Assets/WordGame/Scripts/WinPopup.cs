@@ -23,18 +23,22 @@ public class WinPopup : PopupBase
         Debug.Assert(mainMenuButton != null, "WinPopup: mainMenuButton missing!");
 
         restartButton.onClick.RemoveAllListeners();
-        restartButton.onClick.AddListener(OnRestart);
+        restartButton.onClick.AddListener(OnNextLevel);
 
         mainMenuButton.onClick.RemoveAllListeners();
         mainMenuButton.onClick.AddListener(OnMainMenu);
+
+        var label = restartButton.GetComponentInChildren<TextMeshProUGUI>();
+        if (label != null) label.text = "NEXT LEVEL";
     }
 
     public void ShowResult(int wordScore, float secondsLeft)
     {
         int bonus = Mathf.RoundToInt(secondsLeft) * timeBonusPerSecond;
         int total = wordScore + bonus;
+        int levelJustWon = LevelManager.CurrentLevel;
 
-        if (titleText != null) titleText.text = "ESCAPED!";
+        if (titleText != null) titleText.text = "LEVEL " + levelJustWon + " WON!";
         if (scoreText != null) scoreText.text = "0";
         if (timeBonusText != null) timeBonusText.text = "+ " + bonus + " time bonus";
 
@@ -43,6 +47,8 @@ public class WinPopup : PopupBase
 
         if (highScoreText != null) highScoreText.text = "Best: " + hs;
         if (newRecordBadge != null) newRecordBadge.gameObject.SetActive(isNewRecord);
+
+        GameStats.TrackHighestEscapeLevel(levelJustWon);
 
         Show();
         AnimateScore(total);
@@ -59,8 +65,9 @@ public class WinPopup : PopupBase
             .OnComplete(() => scoreText.transform.DOPunchScale(Vector3.one * 0.2f, 0.3f, 4, 0.5f));
     }
 
-    private void OnRestart()
+    private void OnNextLevel()
     {
+        LevelManager.IncrementLevel();
         if (SceneLoader.Instance != null) SceneLoader.Instance.LoadScene("Game");
         else SceneManager.LoadScene("Game");
     }

@@ -39,7 +39,11 @@ public class ModeSelectPopup : PopupBase
     private void OnEnable()
     {
         if (escapeBestText != null)
-            escapeBestText.text = "Best: " + HighScoreManager.GetHighScore(GameMode.Mode.Escape);
+        {
+            int best = HighScoreManager.GetHighScore(GameMode.Mode.Escape);
+            int level = LevelManager.CurrentLevel;
+            escapeBestText.text = "Lv " + level + " • Best: " + best;
+        }
         if (exploreBestText != null)
             exploreBestText.text = "Best: " + HighScoreManager.GetHighScore(GameMode.Mode.Explore);
     }
