@@ -240,6 +240,13 @@ public class WordBuilder : MonoBehaviour
         }
         else
         {
+            if (result == ValidationResult.TooShort)
+            {
+                Debug.Log("[WordBuilder] Discarded (too short): " + word);
+                ClearSelection(true);
+                return;
+            }
+
             string msg = MessageFor(result);
             if (preview != null) preview.FlashError(msg);
             if (SoundManager.Instance != null) SoundManager.Instance.PlayError();

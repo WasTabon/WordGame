@@ -12,7 +12,9 @@ public enum ValidationResult
 
 public class WordValidator : MonoBehaviour
 {
-    public int minWordLength = 2;
+    public const int ABSOLUTE_MIN_LENGTH = 3;
+
+    public int minWordLength = 3;
 
     private readonly HashSet<string> usedWords = new HashSet<string>();
 
@@ -21,7 +23,7 @@ public class WordValidator : MonoBehaviour
         if (string.IsNullOrEmpty(word)) return ValidationResult.Invalid;
         string upper = word.ToUpperInvariant();
 
-        int effectiveMin = Mathf.Max(minWordLength, requiredMinLength);
+        int effectiveMin = Mathf.Max(ABSOLUTE_MIN_LENGTH, Mathf.Max(minWordLength, requiredMinLength));
         if (upper.Length < effectiveMin) return ValidationResult.TooShort;
 
         if (usedWords.Contains(upper)) return ValidationResult.AlreadyUsed;

@@ -87,13 +87,13 @@ public static class Dictionary
         for (int i = 0; i < lines.Length; i++)
         {
             var w = lines[i].Trim().ToUpperInvariant();
-            if (w.Length >= 2)
+            if (w.Length >= 3)
             {
                 placementPool.Add(w);
                 placementSet.Add(w);
             }
         }
-        Debug.Log("[Dictionary] Loaded " + placementPool.Count + " placement words.");
+        Debug.Log("[Dictionary] Loaded " + placementPool.Count + " placement words (>= 3 letters).");
     }
 
     private static void LoadValidation()
@@ -113,9 +113,9 @@ public static class Dictionary
         for (int i = 0; i < lines.Length; i++)
         {
             var w = lines[i].Trim().ToUpperInvariant();
-            if (w.Length >= 2) validationSet.Add(w);
+            if (w.Length >= 3) validationSet.Add(w);
         }
         float elapsed = Time.realtimeSinceStartup - t0;
-        Debug.Log("[Dictionary] Loaded " + validationSet.Count + " validation words in " + (elapsed * 1000f).ToString("F0") + "ms.");
+        Debug.Log("[Dictionary] Loaded " + validationSet.Count + " validation words (>= 3 letters) in " + (elapsed * 1000f).ToString("F0") + "ms.");
     }
 }
